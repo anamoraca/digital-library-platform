@@ -1,0 +1,24 @@
+server:
+  port: 9050
+
+spring:
+  neo4j:
+    uri: bolt://localhost:7687
+    authentication:
+      username: neo4j
+      password: password
+  application:
+    name: graph-database-service
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+      healthcheck:
+        enabled: true
+  instance:
+    prefer-ip-address: true
+
+
+
+

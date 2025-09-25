@@ -1,0 +1,26 @@
+server:
+  port: 9000
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_HOSTNAME:localhost}:8761/eureka/
+      
+spring:
+  application:
+    name: gateway-api
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: relational-database-service
+          uri: lb://relational-database-service
+          predicates:
+            - Path=/relational-database-service/**
+        - id: document-database-service
+          uri: lb://document-database-service
+          predicates:
+            - Path=/document-database-service/**

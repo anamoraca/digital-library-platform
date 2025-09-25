@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  eureka-server:
+    build:
+      context: ./EurekaService
+      dockerfile: Dockerfile
+    image: eureka-server:latest
+    ports:
+      - "8761:8761"
+
+  gateway-api:
+    build:
+      context: ./GatewayService
+      dockerfile: Dockerfile
+    image: gateway-api:latest
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+    depends_on:
+      - eureka-server
+      - graph-service
+      - timeseries-service
+    ports:
+      - "9003:9000"
+
+  neo4j:
+    image: neo4j:5
+    container_name: neo4j
+    environment:
+      - NEO4J_AUTH=neo4j/neo4jpass
+      - NEO4J_dbms_memory_heap_initial__size=512m
+      - NEO4J_dbms_memory_heap_max__size=1g
+      - NEO4J_dbms_memory_pagecache_size=512m
+    ports:
+      - "7474:7474"   # Neo4j Browser
+      - "7687:7687"   # Bolt
+    volumes:
+      - neo4j_data:/data
+
+  influxdb:
+    image: influxdb:2.7.6
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-storage:/var/lib/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=nais
+      - DOCKER_INFLUXDB_INIT_PASSWORD=password
+      - DOCKER_INFLUXDB_INIT_ORG=nais_org
+      - DOCKER_INFLUXDB_INIT_BUCKET=nais_bucket
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-auth-token
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_storage:/var/lib/grafana   
+
+  graph-service:
+    build:
+      context: ./GraphDatabaseService
+      dockerfile: Dockerfile
+    image: graph-spring-example:latest
+    depends_on:
+      - eureka-server
+      - neo4j
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING_NEO4J_URI: bolt://neo4j:7687
+      SPRING_NEO4J_USERNAME: neo4j
+      SPRING_NEO4J_PASSWORD: neo4jpass
+    ports:
+      - "8081:8081"
+
+  timeseries-service:
+    build:
+      context: ./TimeseriesDatabaseService
+      dockerfile: Dockerfile
+    image: timeseries-example:latest
+    restart: on-failure
+    depends_on:
+      - eureka-server
+      - influxdb
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING_INFLUX_URL: http://influxdb:8086
+      INFLUX_ORG: nais_org
+      INFLUX_BUCKET: nais_bucket
+      INFLUX_TOKEN: my-super-secret-auth-token
+    ports:
+      - "8082:8082"
+
+volumes:
+  neo4j_data:
+  influxdb-storage:
+  grafana_storage:

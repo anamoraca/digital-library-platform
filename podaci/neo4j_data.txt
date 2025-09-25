@@ -1,0 +1,63 @@
+CREATE (:Customer {idOriginal: 1, email: "john.doe@example.com", isActive: true}),
+       (:Customer {idOriginal: 2, email: "jane.smith@example.com", isActive: true}),
+       (:Customer {idOriginal: 3, email: "alice.johnson@example.com", isActive: true}),
+       (:Customer {idOriginal: 4, email: "bob.williams@example.com", isActive: true}),
+       (:Customer {idOriginal: 5, email: "eve.brown@example.com", isActive: true}),
+       (:Customer {idOriginal: 6, email: "michael.davis@example.com", isActive: true}),
+       (:Customer {idOriginal: 7, email: "emily.miller@example.com", isActive: true}),
+       (:Customer {idOriginal: 8, email: "david.wilson@example.com", isActive: true}),
+       (:Customer {idOriginal: 9, email: "sarah.martinez@example.com", isActive: true}),
+       (:Customer {idOriginal: 10, email: "chris.anderson@example.com", isActive: true}),
+       (:Customer {idOriginal: 11, email: "olivia.taylor@example.com", isActive: true}),
+       (:Customer {idOriginal: 12, email: "william.garcia@example.com", isActive: true}),
+       (:Customer {idOriginal: 13, email: "sophia.rodriguez@example.com", isActive: true}),
+       (:Customer {idOriginal: 14, email: "james.lopez@example.com", isActive: true}),
+       (:Customer {idOriginal: 15, email: "emma.hernandez@example.com", isActive: true}),
+       (:Customer {idOriginal: 16, email: "matthew.gonzalez@example.com", isActive: true}),
+       (:Customer {idOriginal: 17, email: "isabella.perez@example.com", isActive: true}),
+       (:Customer {idOriginal: 18, email: "daniel.moore@example.com", isActive: true}),
+       (:Customer {idOriginal: 19, email: "ava.taylor@example.com", isActive: true}),
+       (:Customer {idOriginal: 20, email: "alexander.king@example.com", isActive: true}),
+       (:Customer {idOriginal: 21, email: "mihael@example.com", isActive: true})
+
+CREATE (:Product {idOriginal: "1", name: "Apple Juice", isAvailable: true}),
+       (:Product {idOriginal: "2", name: "Banana Soda", isAvailable: true}),
+       (:Product {idOriginal: "3", name: "Orange Snack", isAvailable: true}),
+       (:Product {idOriginal: "4", name: "Grapes Cookies", isAvailable: true}),
+       (:Product {idOriginal: "5", name: "Pineapple Jam", isAvailable: true}),
+       (:Product {idOriginal: "6", name: "Strawberry Chips", isAvailable: true}),
+       (:Product {idOriginal: "7", name: "Watermelon Cake", isAvailable: true}),
+       (:Product {idOriginal: "8", name: "Mango Yogurt", isAvailable: true}),
+       (:Product {idOriginal: "9", name: "Peach Smoothie", isAvailable: true}),
+       (:Product {idOriginal: "10", name: "Pear Tea", isAvailable: true}),
+       (:Product {idOriginal: "11", name: "Apple Tea", isAvailable: true}),
+       (:Product {idOriginal: "12", name: "Banana Smoothie", isAvailable: true}),
+       (:Product {idOriginal: "13", name: "Orange Yogurt", isAvailable: true}),
+       (:Product {idOriginal: "14", name: "Grapes Cake", isAvailable: true}),
+       (:Product {idOriginal: "15", name: "Pineapple Chips", isAvailable: true}),
+       (:Product {idOriginal: "16", name: "Strawberry Jam", isAvailable: true}),
+       (:Product {idOriginal: "17", name: "Watermelon Snack", isAvailable: true}),
+       (:Product {idOriginal: "18", name: "Mango Soda", isAvailable: true}),
+       (:Product {idOriginal: "19", name: "Peach Juice", isAvailable: true}),
+       (:Product {idOriginal: "20", name: "Pear Cookies", isAvailable: true})
+
+MATCH (c:Customer), (p:Product)
+WHERE c.idOriginal IN [1, 2, 3, 4, 5] AND p.idOriginal IN ["1", "2", "3", "4", "5"]
+CREATE (c)-[purchase:PURCHASED]->(p)
+SET purchase.numberOfPurchasedItems = toInteger(rand() * 10)
+
+MATCH (c:Customer), (p:Product)
+WHERE c.idOriginal = 21 AND p.idOriginal IN ["1", "2", "3"]
+CREATE (c)-[purchase:PURCHASED]->(p)
+SET purchase.numberOfPurchasedItems = toInteger(rand() * 10)
+
+MATCH (c:Customer), (p:Product)
+WHERE c.idOriginal IN [6, 7, 8, 9, 10] AND p.idOriginal IN ["6", "7", "8", "9", "10"]
+CREATE (c)-[review:REVIEWED]->(p)
+SET review.rating = toInteger(rand() * 5) + 1
+
+MATCH (c:Customer), (p:Product)
+WHERE c.idOriginal = 21  AND p.idOriginal IN ["9", "10"]
+CREATE (c)-[review:REVIEWED]->(p)
+SET review.rating = toInteger(rand() * 5) + 1
+

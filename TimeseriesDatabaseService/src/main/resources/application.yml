@@ -1,0 +1,23 @@
+server:
+  port: 9090
+
+
+spring:
+  application:
+    name: timeseries-database-service
+  influx:
+    token: my-super-secret-auth-token
+    bucket: nais_bucket
+    org: nais_org
+    url: http://localhost:8086
+    user: nais
+    password: password
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+      healthcheck:
+        enabled: true
+  instance:
+    prefer-ip-address: true
