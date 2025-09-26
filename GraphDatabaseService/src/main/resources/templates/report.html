@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8"/>
+    <style>
+      body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; }
+      h1, h2 { color: #333; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+      th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+      th { background: #f2f2f2; }
+      .section { margin-bottom: 24px; }
+      .badge { padding: 2px 6px; background:#efefef; border-radius:4px; font-size: 11px;}
+    </style>
+
+  </head>
+  <body>
+    <h1>E-Library Izveštaj</h1>
+    <p><b>Korisnik:</b> <span th:text="${userId}"></span></p>
+    <p><b>Filter:</b> Genre=<span th:text="${genre}"></span>,
+       YearFrom=<span th:text="${yearFrom}"></span>,
+       YearTo=<span th:text="${yearTo}"></span>,
+       MinReads=<span th:text="${minReads}"></span>
+    </p>
+
+    <div class="section">
+      <h2>Prosta sekcija A — Knjige po žanru</h2>
+      <table>
+        <thead>
+          <tr><th>Naslov</th><th>Autor(i)</th><th>Godina</th><th>Žanr</th></tr>
+        </thead>
+        <!-- PROSTA A -->
+        <tbody>
+          <tr th:each="row : ${booksByGenre}">
+            <td th:text="${row['title']}">Naslov</td>
+            <td>
+        <span th:each="a,iter : ${row['authors']}"
+              th:text="${a} + (iter.last ? '' : ', ')">Autor</span>
+            </td>
+            <td th:text="${row['year']}">2020</td>
+            <td>
+        <span th:each="g,iter : ${row['genres']}"
+              th:text="${g} + (iter.last ? '' : ', ')">Žanr</span>
+            </td>
+          </tr>
+        </tbody>
+
+
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Prosta sekcija B — Aktivni korisnici (broj pročitanih knjiga)</h2>
+      <table>
+        <thead>
+          <tr><th>Korisnik</th><th>Broj čitanja</th></tr>
+        </thead>
+        <!-- Prosta B -->
+        <tbody>
+        <tr th:each="row : ${activeUsers}">
+          <td th:text="${row['name']}">Ime</td>
+          <td th:text="${row['reads']}">0</td>
+        </tr>
+        </tbody>
+
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Složena sekcija — Personalizovane preporuke (hibridna metrika)</h2>
+      <table>
+        <thead>
+          <tr><th>Naslov</th><th>Žanrovi</th><th>Score</th></tr>
+        </thead>
+        <!-- SLOŽENA -->
+        <tbody>
+            <tr th:each="row : ${complex}">
+              <td th:text="${row['title']}">Naslov</td>
+              <td>
+          <span th:each="g,iter : ${row['genres']}"
+                th:text="${g} + (iter.last ? '' : ', ')">Žanr</span>
+              </td>
+              <td>
+          <span class="badge"
+                th:text="${#numbers.formatDecimal(row['score'], 1, 'COMMA', 2, 'POINT')}">0</span>
+              </td>
+            </tr>
+        </tbody>
+
+      </table>
+    </div>
+  </body>
+</html>
