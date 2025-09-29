@@ -95,6 +95,23 @@ services:
     ports:
       - "8082:8082"
 
+  book-saga-service:
+    build:
+      context: ./BookSagaService
+      dockerfile: Dockerfile
+    image: book-saga-service:latest
+    depends_on:
+      - eureka-server
+      - graph-service
+      - timeseries-service
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      APP_GRAPHBASEURL: http://graph-service:8081
+      APP_TSBASEURL: http://timeseries-service:8082
+    ports:
+      - "8083:8083"
+
+
 volumes:
   neo4j_data:
   influxdb-storage:

@@ -1,0 +1,15 @@
+# src/main/resources/application.yml
+spring:
+  application:
+    name: book-saga-service
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+clients:
+  graph:
+    base-url: http://localhost:8081
+  ts:                     # <— OVO mora biti "ts" da se poklopi sa @Value("${clients.ts.base-url}")
+    base-url: http://localhost:8082
