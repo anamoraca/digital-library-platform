@@ -15,6 +15,9 @@ import rs.ac.uns.acs.nais.TimeseriesDatabaseService.service.BookAnalyticsService
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+
 @RestController
 @RequestMapping("/api/analytics/books")
 @RequiredArgsConstructor
@@ -23,8 +26,6 @@ public class BookAnalyticsController {
 
     private final BookAnalyticsService service;
 
-    // ---------- CREATE ----------
-
     /** Upis jednog BookEvent-a (OPENED/PROGRESS/CLOSED). */
     @PostMapping("/events")
     public ResponseEntity<Void> insertEvent(@RequestBody BookEvent event) {
@@ -32,6 +33,7 @@ public class BookAnalyticsController {
         return ResponseEntity.accepted().build();
     }
 
+    //TODO: dodaj u postman
     /** Batch upis više BookEvent-ova. */
     @PostMapping("/events/batch")
     public ResponseEntity<Void> insertEventsBatch(@RequestBody List<BookEvent> events) {
@@ -39,13 +41,7 @@ public class BookAnalyticsController {
         return ResponseEntity.accepted().build();
     }
 
-    // ---------- DELETE ----------
-
-    /**
-     * Brisanje događaja po opsegu i opcionalnim filterima.
-     * from/to su ISO-8601 u UTC (npr. 2025-09-27T00:00:00Z).
-     * Filtri su po tagovima (book_id, user_id, format, event).
-     */
+    /** Brisanje događaja po opsegu i opcionalnim filterima. */
     @DeleteMapping("/events")
     public ResponseEntity<Void> deleteEvents(
             @RequestParam Instant from,
@@ -58,8 +54,6 @@ public class BookAnalyticsController {
         service.deleteEvents(from, to, bookId, userId, format, event);
         return ResponseEntity.noContent().build();
     }
-
-    // ---------- READ (postojeće rute) ----------
 
     /** Trend prosečnog vremena učitavanja (load_ms) za konkretnu knjigu. */
     @GetMapping("/load-time/trend")
@@ -93,5 +87,21 @@ public class BookAnalyticsController {
             @RequestParam(defaultValue = "10") @Positive int limit
     ) {
         return ResponseEntity.ok(service.topBooks(range, metric, limit));
+    }
+
+    @GetMapping(value = "/report", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> reportPdfUsingExisting(
+            @RequestParam(defaultValue = "7d") String range,
+            @RequestParam(defaultValue = "1h") String interval,
+            @RequestParam(defaultValue = "10") @Positive int limit,
+            @RequestParam @NotBlank String complexBookId
+    ) {
+        byte[] pdf = service.generateReportPdfUsingExisting(range, interval, limit, complexBookId);
+
+        var headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"book-analytics-report.pdf\"");
+
+        return ResponseEntity.ok().headers(headers).body(pdf);
     }
 }

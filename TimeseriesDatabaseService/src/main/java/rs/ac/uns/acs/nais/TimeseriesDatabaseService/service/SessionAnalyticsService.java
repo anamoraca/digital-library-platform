@@ -61,9 +61,4 @@ public class SessionAnalyticsService {
 
         return new HistogramResponse(range, buckets, bins);
     }
-
-
-    public List<TimeSeriesPoint<Long>> dau(String range) {
-        return repo.fetchDAU(range);
-    }
 }

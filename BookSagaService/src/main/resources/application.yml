@@ -1,4 +1,7 @@
 # src/main/resources/application.yml
+server:
+  port: ${SERVER_PORT:8083}
+
 spring:
   application:
     name: book-saga-service
@@ -6,10 +9,14 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka
+      defaultZone: http://eureka-server:8761/eureka
+
+app:
+  graphBaseUrl: ${APP_GRAPHBASEURL:http://graph-service:8081}
+  tsBaseUrl: ${APP_TSBASEURL:http://timeseries-service:8082}
 
 clients:
   graph:
-    base-url: http://localhost:8081
-  ts:                     # <— OVO mora biti "ts" da se poklopi sa @Value("${clients.ts.base-url}")
-    base-url: http://localhost:8082
+    base-url: http://graph-service:8081
+  ts:
+    base-url: http://timeseries-service:8082

@@ -21,7 +21,6 @@ public class SessionAnalyticsController {
 
     private final SessionAnalyticsService service;
 
-    // ---------- CREATE ----------
     @PostMapping
     public ResponseEntity<Void> insert(@RequestBody AppSessionEvent event) {
         service.insert(event);
@@ -34,7 +33,6 @@ public class SessionAnalyticsController {
         return ResponseEntity.accepted().build();
     }
 
-    // ---------- DELETE ----------
     @DeleteMapping
     public ResponseEntity<Void> deleteRange(
             @RequestParam Instant from,
@@ -47,7 +45,6 @@ public class SessionAnalyticsController {
         return ResponseEntity.noContent().build();
     }
 
-    // ---------- READ ----------
     @GetMapping("/active-users")
     public ResponseEntity<ActiveUsersDto> activeUsers(
             @RequestParam(defaultValue = "15m") String window
@@ -64,10 +61,4 @@ public class SessionAnalyticsController {
         return ResponseEntity.ok(service.durationHistogram(range, buckets, max));
     }
 
-    @GetMapping("/dau")
-    public ResponseEntity<List<TimeSeriesPoint<Long>>> dau(
-            @RequestParam(defaultValue = "30d") String range
-    ) {
-        return ResponseEntity.ok(service.dau(range));
-    }
 }

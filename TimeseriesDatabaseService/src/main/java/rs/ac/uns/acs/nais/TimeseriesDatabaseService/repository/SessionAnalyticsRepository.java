@@ -18,5 +18,4 @@ public interface SessionAnalyticsRepository {
     // READ
     long fetchActiveUsers(String window);
     List<Double> fetchDurations(String range);
-    List<TimeSeriesPoint<Long>> fetchDAU(String range);
 }

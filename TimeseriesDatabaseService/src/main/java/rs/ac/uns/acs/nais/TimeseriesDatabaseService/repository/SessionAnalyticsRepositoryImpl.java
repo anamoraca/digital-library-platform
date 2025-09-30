@@ -153,36 +153,6 @@ public class SessionAnalyticsRepositoryImpl implements SessionAnalyticsRepositor
         return out;
     }
 
-    @Override
-    public List<TimeSeriesPoint<Long>> fetchDAU(String range) {
-        // Distinct korisnici po danu (START event)
-        String flux = """
-            from(bucket: "%s")
-              |> range(start: -%s)
-              |> filter(fn: (r) => r._measurement == "app_session" and r.event == "START")
-              |> keep(columns: ["_time","user_id"])
-              |> map(fn: (r) => ({ r with _value: 1.0 }))
-              |> group(columns: ["user_id"])
-              |> aggregateWindow(every: 1d, fn: max, createEmpty: false)
-              |> group(columns: ["_time"])
-              |> count()
-              |> keep(columns: ["_time","_value"])
-            """.formatted(bucket, range);
-
-        QueryApi qa = influx.getQueryApi();
-        List<FluxTable> tables = qa.query(flux, org);
-        List<TimeSeriesPoint<Long>> out = new ArrayList<>();
-        for (FluxTable t : tables) {
-            for (FluxRecord r : t.getRecords()) {
-                Instant ts = (Instant) r.getTime();
-                long v = toLong(r.getValue());
-                out.add(new TimeSeriesPoint<>(ts, v));
-            }
-        }
-        out.sort(Comparator.comparing(TimeSeriesPoint::time));
-        return out;
-    }
-
     // ------------- helpers -------------
 
     private static long toLong(Object v) {

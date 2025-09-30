@@ -55,10 +55,6 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
     }
 
     private String toLineProtocol(BookEvent e) {
-        // measurement: book_event
-        // tags: user_id, book_id, format, event, (opciono) idempotencyKey
-        // fields: load_ms (OPENED), delta_pages (PROGRESS), fallback flag
-        // timestamp: ns
         Instant ts = (e.ts() != null) ? e.ts() : Instant.now();
         long ns = ts.toEpochMilli() * 1_000_000L;
 
@@ -72,7 +68,6 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
             sb.append(",idempotencyKey=").append(escape(e.idempotencyKey()));
         }
 
-        // fields
         boolean wroteAnyField = false;
         StringBuilder fields = new StringBuilder();
 
@@ -86,7 +81,7 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
             wroteAnyField = true;
         }
         if (!wroteAnyField) {
-            fields.append("flag=1i"); // Influx LP requires at least one field
+            fields.append("flag=1i");
         }
 
         sb.append(" ").append(fields)
@@ -122,10 +117,11 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
         del.delete(start, stop, predicate.toString(), bucket, org);
     }
 
-    // ---------- READ (postojeće) ----------
+    // ---------- READ ----------
 
     @Override
     public BookLoadTrendResponse fetchBookLoadTrend(String bookId, String range, String interval) {
+        // + sort po vremenu unutar Flux-a
         String flux = """
             from(bucket: "%s")
               |> range(start: -%s)
@@ -133,6 +129,7 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
               |> filter(fn: (r) => r.book_id == "%s" and r.event == "OPENED")
               |> filter(fn: (r) => r._field == "load_ms")
               |> aggregateWindow(every: %s, fn: mean, createEmpty: false)
+              |> sort(columns: ["_time"], desc: false)
               |> keep(columns: ["_time","_value"])
             """.formatted(bucket, range, escapeForFlux(bookId), interval);
 
@@ -142,6 +139,7 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
 
     @Override
     public List<TimeSeriesPoint<Double>> fetchProgressRate(String bookId, String range, String interval) {
+        // + sort po vremenu unutar Flux-a
         String flux = """
             from(bucket: "%s")
               |> range(start: -%s)
@@ -149,6 +147,7 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
               |> filter(fn: (r) => r.book_id == "%s" and r.event == "PROGRESS")
               |> filter(fn: (r) => r._field == "delta_pages")
               |> aggregateWindow(every: %s, fn: mean, createEmpty: false)
+              |> sort(columns: ["_time"], desc: false)
               |> keep(columns: ["_time","_value"])
             """.formatted(bucket, range, escapeForFlux(bookId), interval);
 
@@ -162,6 +161,7 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
         String flux;
         switch (metric) {
             case "open_count" -> {
+                // grupisanje + count + sort desc + limit u Flux-u
                 flux = """
                     from(bucket: "%s")
                       |> range(start: -%s)
@@ -170,10 +170,14 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
                       |> filter(fn: (r) => r._field == "load_ms")
                       |> group(columns: ["book_id"])
                       |> count(column: "_value")
-                      |> keep(columns: ["book_id", "_value"])
-                    """.formatted(bucket, range);
+                      |> rename(columns: {_value: "metric"})
+                      |> sort(columns: ["metric"], desc: true)
+                      |> limit(n: %d)
+                      |> keep(columns: ["book_id", "metric"])
+                    """.formatted(bucket, range, limit);
             }
             case "read_time" -> {
+                // sum(delta_pages) + sort desc + limit u Flux-u
                 flux = """
                     from(bucket: "%s")
                       |> range(start: -%s)
@@ -182,8 +186,11 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
                       |> filter(fn: (r) => r._field == "delta_pages")
                       |> group(columns: ["book_id"])
                       |> sum(column: "_value")
-                      |> keep(columns: ["book_id", "_value"])
-                    """.formatted(bucket, range);
+                      |> rename(columns: {_value: "metric"})
+                      |> sort(columns: ["metric"], desc: true)
+                      |> limit(n: %d)
+                      |> keep(columns: ["book_id", "metric"])
+                    """.formatted(bucket, range, limit);
             }
             default -> throw new IllegalArgumentException("Unknown metric: " + metric);
         }
@@ -195,13 +202,13 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
         for (FluxTable t : tables) {
             for (FluxRecord r : t.getRecords()) {
                 String bId = str(r.getValueByKey("book_id"));
-                double value = dbl(r.getValue());
+                // Čitaj eksplicitno "metric" kolonu (pošto smo _value -> metric u Flux-u)
+                double value = dbl(r.getValueByKey("metric"));
                 out.add(new TopBookMetric(bId, value));
             }
         }
-
-        out.sort(Comparator.comparingDouble(TopBookMetric::value).reversed());
-        return out.size() > limit ? out.subList(0, limit) : out;
+        // više ne sortiramo/limitiramo u Javi — sve je već urađeno u Flux-u
+        return out;
     }
 
     // ---------- helpers ----------
@@ -213,10 +220,11 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
         for (FluxTable t : tables) {
             for (FluxRecord r : t.getRecords()) {
                 Instant ts = (Instant) r.getTime();
-                double val = dbl(r.getValue());
+                double val = dbl(r.getValue()); // ovdje _value ostaje jer keep ostavlja "_value"
                 points.add(new TimeSeriesPoint<>(ts, val));
             }
         }
+        // zadržavam lokalno sortiranje kao safety-net (Flux već sortira)
         points.sort(Comparator.comparing(TimeSeriesPoint::time));
         return points;
     }
@@ -231,20 +239,16 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
         return v == null ? "" : v.toString();
     }
 
-    // Escape za Line Protocol tag vrednosti (razmak, zarez, jednako)
     private static String escape(String s) {
         if (s == null) return "";
         return s.replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\=");
     }
-
 
     private static String escapePred(String s) {
         if (s == null) return "";
         return s.replace("\"", "\\\"");
     }
 
-
-    // Escape za string literal unutar Flux filtera
     private static String escapeForFlux(String s) {
         if (s == null) return "";
         return s.replace("\"", "\\\"");

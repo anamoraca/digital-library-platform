@@ -21,8 +21,6 @@ public class ErrorAnalyticsController {
 
     private final ErrorAnalyticsService service;
 
-    // ---------- INSERT ----------
-
     @PostMapping
     public ResponseEntity<Void> insert(@RequestBody ErrorLogEvent event) {
         service.insert(event);
@@ -35,11 +33,8 @@ public class ErrorAnalyticsController {
         return ResponseEntity.accepted().build();
     }
 
-    // ---------- DELETE ----------
-
     /**
      * Brisanje error slogova po vremenskom opsegu i opcionalnim filterima.
-     * Parametri: from/to (ISO8601, UTC), serviceName?, errorType?
      */
     @DeleteMapping
     public ResponseEntity<Void> deleteRange(
@@ -52,8 +47,8 @@ public class ErrorAnalyticsController {
         return ResponseEntity.noContent().build();
     }
 
-    // ---------- READ ----------
 
+    //todo: provjeriti parametre
     @GetMapping("/overview")
     public ResponseEntity<List<TimeSeriesPoint<Long>>> overview(
             @RequestParam(required = false, name = "serviceName") String serviceName,

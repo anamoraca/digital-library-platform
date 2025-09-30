@@ -10,11 +10,15 @@ public class WebClientConfig {
 
     @Bean("graphWebClient")
     public WebClient graphWebClient(@Value("${clients.graph.base-url}") String baseUrl) {
-        return WebClient.builder().baseUrl(baseUrl).build();
+        return WebClient.builder()
+                .baseUrl(baseUrl)
+                .build();
     }
 
     @Bean("tsWebClient")
     public WebClient tsWebClient(@Value("${clients.ts.base-url}") String baseUrl) {
-        return WebClient.builder().baseUrl(baseUrl).build();
+        return WebClient.builder()
+                .baseUrl(baseUrl)
+                .build();
     }
 }

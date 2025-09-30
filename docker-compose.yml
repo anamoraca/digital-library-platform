@@ -59,7 +59,11 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - grafana_storage:/var/lib/grafana   
+      - grafana_storage:/var/lib/grafana
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-influxdb-flux-datasource
+      - GF_INSTALL_PLUGINS=marcusolsson-json-datasource
+
 
   graph-service:
     build:
