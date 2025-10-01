@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   eureka-server:
@@ -8,6 +7,14 @@ services:
     image: eureka-server:latest
     ports:
       - "8761:8761"
+    # Ako imaš Actuator u Eureka serveru, promeni URL u /actuator/health
+    healthcheck:
+      test: ["CMD-SHELL", "bash -lc '</dev/tcp/127.0.0.1/8761'"]
+      start_period: 30s
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
 
   gateway-api:
     build:
@@ -15,13 +22,17 @@ services:
       dockerfile: Dockerfile
     image: gateway-api:latest
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
     depends_on:
-      - eureka-server
-      - graph-service
-      - timeseries-service
+      eureka-server:
+        condition: service_healthy
+      graph-service:
+        condition: service_started
+      timeseries-service:
+        condition: service_started
     ports:
-      - "9003:9000"
+      - "9003:9000"   # PODRAZUMEVAM da gateway sluša na 9000 u kontejneru
+    restart: unless-stopped
 
   neo4j:
     image: neo4j:5
@@ -36,6 +47,7 @@ services:
       - "7687:7687"   # Bolt
     volumes:
       - neo4j_data:/data
+    restart: unless-stopped
 
   influxdb:
     image: influxdb:2.7.6
@@ -51,6 +63,7 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=nais_org
       - DOCKER_INFLUXDB_INIT_BUCKET=nais_bucket
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-auth-token
+    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
@@ -59,7 +72,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - grafana_storage:/var/lib/grafana   
+      - grafana_storage:/var/lib/grafana
 
   graph-service:
     build:
@@ -67,15 +80,20 @@ services:
       dockerfile: Dockerfile
     image: graph-spring-example:latest
     depends_on:
-      - eureka-server
-      - neo4j
+      eureka-server:
+        condition: service_healthy
+      neo4j:
+        condition: service_started
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       SPRING_NEO4J_URI: bolt://neo4j:7687
       SPRING_NEO4J_USERNAME: neo4j
       SPRING_NEO4J_PASSWORD: neo4jpass
+      # Ako želiš, možeš eksplicitno zadati i:
+      # SERVER_PORT: 9050
     ports:
-      - "8081:8081"
+      - "9050:9050"   # usklađeno sa logom (Tomcat started on 9050)
+    restart: unless-stopped
 
   timeseries-service:
     build:
@@ -84,10 +102,12 @@ services:
     image: timeseries-example:latest
     restart: on-failure
     depends_on:
-      - eureka-server
-      - influxdb
+      eureka-server:
+        condition: service_healthy
+      influxdb:
+        condition: service_started
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       SPRING_INFLUX_URL: http://influxdb:8086
       INFLUX_ORG: nais_org
       INFLUX_BUCKET: nais_bucket
@@ -101,16 +121,20 @@ services:
       dockerfile: Dockerfile
     image: book-saga-service:latest
     depends_on:
-      - eureka-server
-      - graph-service
-      - timeseries-service
+      eureka-server:
+        condition: service_healthy
+      graph-service:
+        condition: service_started
+      timeseries-service:
+        condition: service_started
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
-      APP_GRAPHBASEURL: http://graph-service:8081
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      # Graph sada sluša na 9050 unutar mreže
+      APP_GRAPHBASEURL: http://graph-service:9050
       APP_TSBASEURL: http://timeseries-service:8082
     ports:
       - "8083:8083"
-
+    restart: unless-stopped
 
 volumes:
   neo4j_data:
