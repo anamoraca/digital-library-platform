@@ -1,4 +1,7 @@
 # src/main/resources/application.yml
+server:
+  port: 8085
+
 spring:
   application:
     name: book-saga-service
@@ -10,6 +13,6 @@ eureka:
 
 clients:
   graph:
-    base-url: http://localhost:8081
+    base-url: http://localhost:9050
   ts:                     # <— OVO mora biti "ts" da se poklopi sa @Value("${clients.ts.base-url}")
     base-url: http://localhost:8082

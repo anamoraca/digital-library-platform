@@ -133,7 +133,7 @@ services:
       APP_GRAPHBASEURL: http://graph-service:9050
       APP_TSBASEURL: http://timeseries-service:8082
     ports:
-      - "8083:8083"
+      - "8085:8085"
     restart: unless-stopped
 
 volumes:
