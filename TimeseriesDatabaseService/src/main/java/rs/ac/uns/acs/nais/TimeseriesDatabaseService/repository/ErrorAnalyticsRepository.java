@@ -1,7 +1,8 @@
 package rs.ac.uns.acs.nais.TimeseriesDatabaseService.repository;
 
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.common.TimeSeriesPoint;
-import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.events.ErrorLogEvent;
+import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.events.*;
+import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.enums.*;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.responses.ErrorTypeCount;
 
 import java.time.Instant;
@@ -19,4 +20,8 @@ public interface ErrorAnalyticsRepository {
     // READ
     List<TimeSeriesPoint<Long>> fetchErrorsOverview(String service, String range, String interval);
     List<ErrorTypeCount> fetchErrorsByType(String service, String range, int limit);
+
+    List<ErrorLogEvent> findErrors(String service, String errorType, Instant from, Instant to, int limit);
+
+
 }

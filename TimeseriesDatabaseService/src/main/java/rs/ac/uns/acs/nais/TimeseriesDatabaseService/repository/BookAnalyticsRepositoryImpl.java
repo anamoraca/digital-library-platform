@@ -13,7 +13,8 @@ import com.influxdb.query.FluxTable;
 import com.influxdb.query.FluxRecord;
 
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.common.TimeSeriesPoint;
-import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.events.BookEvent;
+import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.events.*;
+import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.enums.*;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.responses.BookLoadTrendResponse;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.responses.TopBookMetric;
 
@@ -253,4 +254,86 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
         if (s == null) return "";
         return s.replace("\"", "\\\"");
     }
+
+
+
+
+    public List<BookEvent> findEventsByBook(
+            String bookId,
+            Instant from,
+            Instant to,
+            BookEventType event,
+            BookFormat format,
+            int limit
+    ) {
+        if (limit <= 0) limit = 100;
+
+        // Influx akceptira RFC3339: 2025-10-01T12:00:00Z
+        String start = (from != null) ? "time(v: " + from + ")" : "-30d";
+        String stop  = (to   != null) ? "time(v: " + to   + ")" : "now()";
+
+        StringBuilder flux = new StringBuilder()
+                .append("from(bucket: \"").append(bucket).append("\")")
+                .append(" |> range(start: ").append(start).append(", stop: ").append(stop).append(")")
+                .append(" |> filter(fn: (r) => r._measurement == \"book_event\")")
+                // ⬇️ ključna razlika: snake_case tag
+                .append(" |> filter(fn: (r) => r.book_id == \"").append(bookId).append("\")");
+
+        if (event != null) {
+            flux.append(" |> filter(fn: (r) => r.event == \"").append(event.name()).append("\")");
+        }
+        if (format != null) {
+            flux.append(" |> filter(fn: (r) => r.format == \"").append(format.name()).append("\")");
+        }
+
+        // (opciono) zadrži samo kolone koje trebaju pivotu i parsiranju – smanjuje šum
+        flux.append(" |> keep(columns: [\"_time\",\"_field\",\"_value\",\"book_id\",\"user_id\",\"event\",\"format\"])");
+
+        // pivot da dobijemo load_ms i delta_pages u istom redu
+        flux.append(" |> pivot(rowKey:[\"_time\",\"book_id\",\"user_id\",\"event\",\"format\"], columnKey:[\"_field\"], valueColumn:\"_value\")")
+                .append(" |> sort(columns:[\"_time\"], desc: true)")
+                .append(" |> limit(n: ").append(limit).append(")");
+
+        QueryApi qa = influx.getQueryApi();
+        List<FluxTable> tables = qa.query(flux.toString(), org);
+
+        List<BookEvent> out = new ArrayList<>();
+        for (FluxTable t : tables) {
+            for (FluxRecord r : t.getRecords()) {
+                // ⬇️ čitaj snake_case tagove
+                String userId  = (String) r.getValueByKey("user_id");
+                String _bookId = (String) r.getValueByKey("book_id");
+                String fmt     = (String) r.getValueByKey("format");
+                String evt     = (String) r.getValueByKey("event");
+
+                Double loadMs = null;
+                Integer deltaPages = null;
+
+                Object lm = r.getValueByKey("load_ms");
+                Object dp = r.getValueByKey("delta_pages");
+                if (lm instanceof Number n) loadMs = n.doubleValue();
+                if (dp instanceof Number n) deltaPages = n.intValue();
+
+                Instant ts = r.getTime(); // _time
+
+                out.add(new BookEvent(
+                        userId,
+                        _bookId,
+                        fmt != null ? BookFormat.valueOf(fmt) : null,
+                        evt != null ? BookEventType.valueOf(evt) : null,
+                        loadMs,
+                        deltaPages,
+                        ts,
+                        null // idempotencyKey – dodaj ako ga čuvaš kao tag/field
+                ));
+            }
+        }
+        return out;
+    }
+
+
+
+
+
+
 }

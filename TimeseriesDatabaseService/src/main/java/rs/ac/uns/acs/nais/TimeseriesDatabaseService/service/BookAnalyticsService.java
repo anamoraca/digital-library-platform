@@ -3,7 +3,8 @@ package rs.ac.uns.acs.nais.TimeseriesDatabaseService.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.common.TimeSeriesPoint;
-import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.events.BookEvent;
+import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.events.*;
+import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.enums.*;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.responses.BookLoadTrendResponse;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.responses.TopBookMetric;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.repository.BookAnalyticsRepository;
@@ -93,4 +94,21 @@ public class BookAnalyticsService {
         idx = Math.max(0, Math.min(idx, s.size()-1));
         return s.get(idx);
     }
+
+
+
+
+    public List<BookEvent> findEventsByBook(
+            String bookId,
+            Instant from,
+            Instant to,
+            BookEventType event,
+            BookFormat format,
+            int limit
+    ) {
+        if (limit <= 0) limit = 100;
+        return repo.findEventsByBook(bookId, from, to, event, format, limit);
+    }
+
+
 }

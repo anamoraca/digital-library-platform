@@ -6,7 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.common.TimeSeriesPoint;
-import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.events.ErrorLogEvent;
+import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.events.*;
+import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.enums.*;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.responses.ErrorTypeCount;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.service.ErrorAnalyticsService;
 
@@ -66,4 +67,20 @@ public class ErrorAnalyticsController {
     ) {
         return ResponseEntity.ok(service.byType(serviceName, range, limit));
     }
+
+
+
+
+    @GetMapping("/search")
+    public ResponseEntity<List<ErrorLogEvent>> search(
+            @RequestParam(required = false, name = "serviceName") String serviceName,
+            @RequestParam(required = false) String errorType,
+            @RequestParam(required = false) Instant from,
+            @RequestParam(required = false) Instant to,
+            @RequestParam(defaultValue = "100") @Positive int limit
+    ) {
+        return ResponseEntity.ok(service.search(serviceName, errorType, from, to, limit));
+    }
+
+
 }

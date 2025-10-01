@@ -13,12 +13,12 @@ eureka:
       defaultZone: http://eureka-server:8761/eureka
 
 app:
-  graphBaseUrl: ${APP_GRAPHBASEURL:http://graph-service:8081}
+  graphBaseUrl: ${APP_GRAPHBASEURL:http://graph-service:9050}
   tsBaseUrl: ${APP_TSBASEURL:http://timeseries-service:8082}
 
 clients:
   graph:
-    base-url: http://localhost:9050
-  ts:                     # <— OVO mora biti "ts" da se poklopi sa @Value("${clients.ts.base-url}")
-    base-url: http://localhost:8082
+    base-url: http://graph-service:9050
+  ts:
+    base-url: http://timeseries-service:8082
 

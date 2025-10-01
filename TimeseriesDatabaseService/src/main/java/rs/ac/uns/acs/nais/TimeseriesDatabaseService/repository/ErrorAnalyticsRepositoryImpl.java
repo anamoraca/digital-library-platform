@@ -11,7 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.common.TimeSeriesPoint;
-import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.events.ErrorLogEvent;
+import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.events.*;
+import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.enums.*;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.responses.ErrorTypeCount;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.repository.ErrorAnalyticsRepository;
 
@@ -158,4 +159,52 @@ public class ErrorAnalyticsRepositoryImpl implements ErrorAnalyticsRepository {
         if (s == null) return "";
         return s.replace("\"", "\\\"");
     }
+
+
+    @Override
+    public List<ErrorLogEvent> findErrors(String service, String errorType, Instant from, Instant to, int limit) {
+        if (limit <= 0) limit = 100;
+
+        String start = (from != null) ? "time(v: " + from + ")" : "-30d";
+        String stop  = (to   != null) ? "time(v: " + to   + ")" : "now()";
+
+        StringBuilder flux = new StringBuilder()
+                .append("from(bucket: \"").append(bucket).append("\")")
+                .append(" |> range(start: ").append(start).append(", stop: ").append(stop).append(")")
+                .append(" |> filter(fn: (r) => r._measurement == \"error_log\")")
+                .append(" |> filter(fn: (r) => r._field == \"count\")");
+
+        if (service != null && !service.isBlank()) {
+            flux.append(" |> filter(fn: (r) => r.service == \"").append(escape(service)).append("\")");
+        }
+        if (errorType != null && !errorType.isBlank()) {
+            flux.append(" |> filter(fn: (r) => r.error_type == \"").append(escape(errorType)).append("\")");
+        }
+
+        flux.append(" |> keep(columns: [\"_time\",\"_value\",\"service\",\"error_type\",\"idempotencyKey\"])")
+                .append(" |> sort(columns:[\"_time\"], desc: true)")
+                .append(" |> limit(n: ").append(limit).append(")");
+
+        QueryApi qa = influx.getQueryApi();
+        List<FluxTable> tables = qa.query(flux.toString(), org);
+
+        List<ErrorLogEvent> out = new ArrayList<>();
+        for (FluxTable t : tables) {
+            for (FluxRecord r : t.getRecords()) {
+                Instant ts = r.getTime();
+                long v = toLong(r.getValue()); // _value = count
+                int count = (int) Math.min(Integer.MAX_VALUE, Math.max(0, v));
+
+                String svc  = str(r.getValueByKey("service"));
+                String type = str(r.getValueByKey("error_type"));
+                String idem = str(r.getValueByKey("idempotencyKey"));
+                if (idem.isBlank()) idem = null;
+
+                out.add(new ErrorLogEvent(svc, type, count, ts, idem));
+            }
+        }
+        return out;
+    }
+
+
 }

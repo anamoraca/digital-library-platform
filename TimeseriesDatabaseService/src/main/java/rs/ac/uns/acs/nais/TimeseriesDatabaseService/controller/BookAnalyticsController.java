@@ -7,7 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.common.TimeSeriesPoint;
-import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.events.BookEvent;
+import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.events.*;
+import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.enums.*;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.responses.BookLoadTrendResponse;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.responses.TopBookMetric;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.service.BookAnalyticsService;
@@ -104,4 +105,24 @@ public class BookAnalyticsController {
 
         return ResponseEntity.ok().headers(headers).body(pdf);
     }
+
+
+
+
+
+
+    @GetMapping("/events/by-book")
+    public ResponseEntity<List<BookEvent>> findEventsByBook(
+            @RequestParam String bookId,
+            @RequestParam(required = false) Instant from,
+            @RequestParam(required = false) Instant to,
+            @RequestParam(required = false) BookEventType event,
+            @RequestParam(required = false) BookFormat format,
+            @RequestParam(defaultValue = "100") @Positive int limit
+    ) {
+        return ResponseEntity.ok(service.findEventsByBook(bookId, from, to, event, format, limit));
+    }
+
+
+
 }
