@@ -333,6 +333,89 @@ public class BookAnalyticsRepositoryImpl implements BookAnalyticsRepository {
 
 
 
+    @Override
+    public void updateEventTypeForLatestByBook(String bookId, BookEventType toEvent) {
+        // 1) Nađi NAJSKORIJI event za dati bookId (pivot da dobijemo oba polja u istom redu)
+        String flux = """
+        from(bucket: "%s")
+          |> range(start: -30d)
+          |> filter(fn: (r) => r._measurement == "book_event")
+          |> filter(fn: (r) => r.book_id == "%s")
+          |> keep(columns: ["_time","_field","_value","book_id","user_id","event","format"])
+          |> pivot(rowKey:["_time","book_id","user_id","event","format"], columnKey:["_field"], valueColumn:"_value")
+          |> sort(columns: ["_time"], desc: true)
+          |> limit(n: 1)
+        """.formatted(bucket, escapeForFlux(bookId));
+
+        QueryApi qa = influx.getQueryApi();
+        List<FluxTable> tables = qa.query(flux, org);
+
+        FluxRecord rec = null;
+        if (!tables.isEmpty() && !tables.get(0).getRecords().isEmpty()) {
+            rec = tables.get(0).getRecords().get(0);
+        }
+        if (rec == null) {
+            // nema ništa za izmijeniti
+            return;
+        }
+
+        // Izvuci stare vrijednosti
+        Instant ts = rec.getTime();
+        String userId   = (String) rec.getValueByKey("user_id");
+        String fmtTag   = (String) rec.getValueByKey("format");
+        String evtTag   = (String) rec.getValueByKey("event");
+
+        Double loadMs = null;
+        Integer deltaPages = null;
+        Object lm = rec.getValueByKey("load_ms");
+        Object dp = rec.getValueByKey("delta_pages");
+        if (lm instanceof Number n) loadMs = n.doubleValue();
+        if (dp instanceof Number n) deltaPages = n.intValue();
+
+        BookFormat fmt = null;
+        try { if (fmtTag != null) fmt = BookFormat.valueOf(fmtTag); } catch (Exception ignore) {}
+
+        // 2) Obriši TAČNO taj point (1ns prozor + precizan predicate)
+        OffsetDateTime start = ts.atOffset(ZoneOffset.UTC);
+        OffsetDateTime stop  = start.plusNanos(1); // najmanji mogući opseg
+
+        StringBuilder predicate = new StringBuilder("_measurement=\"book_event\"");
+        predicate.append(" AND book_id=\"").append(escapePred(bookId)).append("\"");
+        if (userId != null && !userId.isBlank()) {
+            predicate.append(" AND user_id=\"").append(escapePred(userId)).append("\"");
+        }
+        if (evtTag != null && !evtTag.isBlank()) {
+            predicate.append(" AND event=\"").append(escapePred(evtTag)).append("\"");
+        }
+        if (fmtTag != null && !fmtTag.isBlank()) {
+            predicate.append(" AND format=\"").append(escapePred(fmtTag)).append("\"");
+        }
+
+        influx.getDeleteApi().delete(start, stop, predicate.toString(), bucket, org);
+
+        // 3) Upisi isti point sa novim 'event' tagom i ISTIM timestampom
+        BookEvent updated = new BookEvent(
+                userId,
+                bookId,
+                fmt,
+                toEvent,      // promijenjen event
+                loadMs,
+                deltaPages,
+                ts,           // čuvamo isti TS
+                null          // idempotencyKey ako koristiš – ovdje ga ne čuvamo
+        );
+
+        // Koristimo postojeći toLineProtocol (uzima e.ts ako je postavljen)
+        WriteApiBlocking w = influx.getWriteApiBlocking();
+        w.writeRecord(bucket, org, WritePrecision.NS, toLineProtocol(updated));
+    }
+
+
+
+
+
+
+
 
 
 

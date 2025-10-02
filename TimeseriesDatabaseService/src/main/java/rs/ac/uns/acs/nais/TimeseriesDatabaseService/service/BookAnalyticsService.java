@@ -111,4 +111,13 @@ public class BookAnalyticsService {
     }
 
 
+    public void changeLatestEventTypeForBook(String bookId, BookEventType toEvent) {
+        repo.updateEventTypeForLatestByBook(bookId, toEvent);
+    }
+
+
+
+
+
+
 }

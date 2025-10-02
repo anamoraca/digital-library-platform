@@ -5,6 +5,7 @@ import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.events.*;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.responses.BookLoadTrendResponse;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.responses.TopBookMetric;
 import rs.ac.uns.acs.nais.TimeseriesDatabaseService.model.enums.*;
+import java.util.Optional;
 
 import java.time.Instant;
 import java.util.List;
@@ -32,7 +33,6 @@ public interface BookAnalyticsRepository {
 
 
 
-
-
+    void updateEventTypeForLatestByBook(String bookId, BookEventType toEvent);
 
 }

@@ -34,7 +34,6 @@ public class BookAnalyticsController {
         return ResponseEntity.accepted().build();
     }
 
-    //TODO: dodaj u postman
     /** Batch upis više BookEvent-ova. */
     @PostMapping("/events/batch")
     public ResponseEntity<Void> insertEventsBatch(@RequestBody List<BookEvent> events) {
@@ -124,5 +123,13 @@ public class BookAnalyticsController {
     }
 
 
+    @PatchMapping("/events/by-book/change-event")
+    public ResponseEntity<Void> changeLatestEventTypeForBook(
+            @RequestParam @NotBlank String bookId,
+            @RequestParam BookEventType toEvent
+    ) {
+        service.changeLatestEventTypeForBook(bookId, toEvent);
+        return ResponseEntity.noContent().build();
+    }
 
 }
